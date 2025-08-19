@@ -5,45 +5,45 @@
 ## 🔧 系統需求
 
 - **作業系統**: Ubuntu 20.04+ / CentOS 8+ / RHEL 8+
-- **Docker**: 20.10+ 
-- **Docker Compose**: 2.0+
+- **Docker**: 20.10+ (包含整合的 Docker Compose)
 - **記憶體**: 至少 4GB (建議 8GB+)
 - **CPU**: 至少 2 核心 (建議 4 核心+)
 - **網路**: 能存取 Cloudflare Workers 的網路連線
 
 ## 📦 快速部署 (推薦)
 
-### 1. 安裝 Docker 和 Docker Compose
+### 1. 安裝 Docker
 
 #### Ubuntu/Debian:
 ```bash
 # 更新套件清單
 sudo apt update
 
-# 安裝 Docker
+# 安裝 Docker (最新版已包含 Docker Compose)
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 sudo usermod -aG docker $USER
 
-# 安裝 Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
 # 重新登入以套用權限
 newgrp docker
+
+# 驗證安裝 (Docker Compose 已整合)
+docker --version
+docker compose version
 ```
 
 #### CentOS/RHEL:
 ```bash
 # 安裝 Docker
+sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 sudo dnf install -y docker-ce docker-ce-cli containerd.io
 sudo systemctl start docker
 sudo systemctl enable docker
 sudo usermod -aG docker $USER
 
-# 安裝 Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# 驗證安裝
+docker --version  
+docker compose version
 ```
 
 ### 2. 下載專案
@@ -92,23 +92,23 @@ CPU_CORES=4
 
 ```bash
 # 啟動服務 (背景執行)
-docker-compose up -d
+docker compose up -d
 
 # 查看日誌
-docker-compose logs -f gnss-compute-server
+docker compose logs -f gnss-compute-server
 
 # 檢查服務狀態
-docker-compose ps
+docker compose ps
 ```
 
 ### 5. 部署多個服務器 (高併發)
 
 ```bash
 # 啟動主要服務器 + 第二個服務器
-docker-compose --profile scale up -d
+docker compose --profile scale up -d
 
 # 查看所有服務狀態
-docker-compose ps
+docker compose ps
 ```
 
 ## 🌐 防火牆和 Port 設定
@@ -165,14 +165,14 @@ gcloud compute firewall-rules create allow-gnss-ports \
 ### 1. 檢查服務狀態
 ```bash
 # Docker 容器狀態
-docker-compose ps
+docker compose ps
 
 # 健康檢查
 curl http://localhost:3001/health
 curl http://localhost:3002/health  # 如果啟用第二個服務器
 
 # 查看日誌
-docker-compose logs gnss-compute-server
+docker compose logs gnss-compute-server
 ```
 
 ### 2. 系統監控
@@ -181,7 +181,7 @@ docker-compose logs gnss-compute-server
 docker stats
 
 # 容器日誌 (即時)
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### 3. 外部連線測試
@@ -197,7 +197,7 @@ curl http://您的主機IP:3001/health
 
 ### 1. 效能調整
 
-編輯 `docker-compose.yml`:
+編輯 `docker compose.yml`:
 ```yaml
 deploy:
   resources:
@@ -218,7 +218,7 @@ sudo systemctl enable docker
 ### 3. 日誌管理
 
 ```bash
-# 限制日誌大小 (編輯 docker-compose.yml)
+# 限制日誌大小 (編輯 docker compose.yml)
 logging:
   driver: "json-file"
   options:
@@ -231,13 +231,13 @@ logging:
 ### 水平擴展 (多台主機):
 ```bash
 # 主機 1
-WORKER_ID=server-001 docker-compose up -d
+WORKER_ID=server-001 docker compose up -d
 
 # 主機 2  
-WORKER_ID=server-002 docker-compose up -d
+WORKER_ID=server-002 docker compose up -d
 
 # 主機 3
-WORKER_ID=server-003 docker-compose up -d
+WORKER_ID=server-003 docker compose up -d
 ```
 
 每台主機會自動從 Cloudflare Worker 拉取任務，實現負載分散。
@@ -261,7 +261,7 @@ WORKER_ID=server-003 docker-compose up -d
    free -h
    
    # 調整 Docker 記憶體限制
-   # 編輯 docker-compose.yml 中的 memory 設定
+   # 編輯 docker compose.yml 中的 memory 設定
    ```
 
 3. **Port 被占用**
@@ -269,7 +269,7 @@ WORKER_ID=server-003 docker-compose up -d
    # 檢查 port 使用狀況
    sudo netstat -tulpn | grep 3001
    
-   # 修改 docker-compose.yml 中的 ports 設定
+   # 修改 docker compose.yml 中的 ports 設定
    ports:
      - "3003:3001"  # 改用其他 port
    ```
@@ -301,8 +301,8 @@ nano .env  # 編輯您的設定
 # 4. 開放防火牆
 sudo ufw allow 3001/tcp
 
-# 5. 啟動服務
-docker-compose up -d
+# 5. 啟動服務 (新版 Docker Compose)
+docker compose up -d
 
 # 6. 驗證
 curl http://localhost:3001/health
