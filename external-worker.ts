@@ -62,10 +62,10 @@ interface JobData {
 }
 
 /**
- * POS檔案加權平均計算 (專用處理流程)
+ * 服務 1: POS檔案加權平均計算 - 完全獨立的處理流程
  */
-async function processPosWeightedAverage(posContent: string): Promise<string> {
-    console.log(`🔄 Processing POS weighted average - Size: ${posContent.length} bytes`);
+async function processPosWeightedAverage(posContent: string): Promise<{ result: string, contentType: string }> {
+    console.log(`🔄 [Service 1] Processing POS weighted average - Size: ${posContent.length} bytes`);
     const startTime = Date.now();
 
     try {
@@ -73,27 +73,33 @@ async function processPosWeightedAverage(posContent: string): Promise<string> {
         const processingDuration = Date.now() - startTime;
 
         if (result.success) {
-            console.log(`✅ POS weighted average completed in ${processingDuration}ms`);
-            console.log(`📊 Stats:`, result.stats);
-            return JSON.stringify({
+            console.log(`✅ [Service 1] POS weighted average completed in ${processingDuration}ms`);
+            console.log(`📊 [Service 1] Stats:`, result.stats);
+            
+            const jsonResult = JSON.stringify({
                 success: true,
                 result: result.result,
                 stats: result.stats
             });
+            
+            return {
+                result: jsonResult,
+                contentType: 'application/json'
+            };
         } else {
             throw new Error(result.error || 'POS processing failed');
         }
     } catch (error: any) {
-        console.error(`❌ POS weighted average failed:`, error.message);
+        console.error(`❌ [Service 1] POS weighted average failed:`, error.message);
         throw error;
     }
 }
 
 /**
- * 標準 GNSS 數據處理 (handlerTypes 處理流程)
+ * 服務 2: 標準處理流程 - 支援單一或鏈式處理器（檔案上傳）
  */
-async function processGnssData(posContent: string, handlerTypes: string[], options: any): Promise<string> {
-    console.log(`🔄 Processing GNSS data - Size: ${posContent.length} bytes, Handlers: [${handlerTypes.join(', ')}]`);
+async function processHandlerChain(posContent: string, handlerTypes: string[], options: any): Promise<{ result: string, contentType: string }> {
+    console.log(`🔄 [Service 2] Processing handler chain - Size: ${posContent.length} bytes, Handlers: [${handlerTypes.join(', ')}]`);
     
     const startTime = Date.now();
     
@@ -108,9 +114,10 @@ async function processGnssData(posContent: string, handlerTypes: string[], optio
         // 數據完整性檢查 - 修正換行符檢查
         const resultSize = Buffer.byteLength(result.result, 'utf8');
         const lineCount = result.result.split('\n').length; // 修正: 使用單個 \n
+
         const processingDuration = Date.now() - startTime;
-        console.log(`✅ GNSS processing completed in ${processingDuration}ms`);
-        console.log(`📊 Result size: ${resultSize} bytes, Lines: ${lineCount}, Content-Type: ${result.contentType}`);
+        console.log(`✅ [Service 2] Handler chain completed in ${processingDuration}ms`);
+        console.log(`📊 [Service 2] Result size: ${resultSize} bytes, Lines: ${lineCount}, Content-Type: ${result.contentType}`);
         
         // 驗證結果不為空
         if (!result.result || result.result.length === 0) {
@@ -119,13 +126,43 @@ async function processGnssData(posContent: string, handlerTypes: string[], optio
         
         // 根據內容類型驗證格式
         if (result.contentType.includes('csv') && !result.result.includes('date_time')) {
-            console.warn('⚠️  CSV result missing expected header, but continuing...');
+            console.warn('⚠️  [Service 2] CSV result missing expected header, but continuing...');
         }
         
-        return result.result;
+        return {
+            result: result.result,
+            contentType: result.contentType
+        };
         
     } catch (error: any) {
-        console.error(`❌ GNSS processing failed:`, error.message);
+        console.error(`❌ [Service 2] Handler chain failed:`, error.message);
+        throw error;
+    }
+}
+
+/**
+ * 服務 3: JSON API - 單一處理器（JSON 請求/響應）
+ */
+async function processJsonRequest(requestData: any): Promise<{ result: string, contentType: string }> {
+    console.log(`🔄 [Service 3] Processing JSON request`);
+    
+    const startTime = Date.now();
+    
+    try {
+        const { handlerType, data, options } = requestData;
+        
+        const result = await GnssProcessor.processJsonRequest(handlerType, data, options);
+        
+        const processingDuration = Date.now() - startTime;
+        console.log(`✅ [Service 3] JSON request completed in ${processingDuration}ms`);
+        
+        return {
+            result: result.result,
+            contentType: result.contentType
+        };
+        
+    } catch (error: any) {
+        console.error(`❌ [Service 3] JSON request failed:`, error.message);
         throw error;
     }
 }
@@ -179,7 +216,7 @@ async function submitResult(jobId: string, result: string | null, error: string 
 }
 
 /**
- * Process individual job
+ * Process individual job with proper service separation
  */
 async function processJob(job: JobData): Promise<void> {
     const { jobId, url, headers, fileKey, body } = job;
@@ -190,7 +227,7 @@ async function processJob(job: JobData): Promise<void> {
     try {
         // Parse URL parameters
         const urlObj = new URL(url);
-        const handlerTypes = urlObj.searchParams.get('handlerType')?.split(',') || [];
+        const handlerTypeFromUrl = urlObj.searchParams.get('handlerType');
         const options: Record<string, any> = {};
         
         for (const [key, value] of urlObj.searchParams.entries()) {
@@ -199,32 +236,55 @@ async function processJob(job: JobData): Promise<void> {
             }
         }
         
-        // Get file content
-        let posContent = '';
+        // Get content based on job type
+        let content: string | any = '';
         if (fileKey) {
             console.log(`📁 Job ${jobId} contains large file: ${fileKey}`);
             // TODO: Implement R2 file retrieval if needed
-            posContent = 'large file content placeholder';
+            content = 'large file content placeholder';
         } else if (body) {
-            posContent = typeof body === 'string' ? body : new TextDecoder().decode(body as ArrayBuffer);
-        } else {
-            throw new Error('No file content found in job data');
+            if (typeof body === 'string') {
+                content = body;
+            } else {
+                content = new TextDecoder().decode(body as ArrayBuffer);
+            }
         }
         
-        let result: string;
+        let processResult: { result: string, contentType: string };
         
-        // 檢查是否為 POS 加權平均計算
-        if (handlerTypes.length === 1 && handlerTypes[0] === 'posWeightedAverage') {
-            // 使用專用的 POS 加權平均處理流程
-            result = await processPosWeightedAverage(posContent);
-            // POS 加權平均返回 JSON 格式
-            await submitResult(jobId, result, null, 'application/json');
+        // 🎯 服務區隔決策邏輯
+        if (handlerTypeFromUrl === 'posWeightedAverage') {
+            // 服務 1: POS檔案加權平均計算 - 完全獨立的處理流程
+            console.log(`🎯 [Job ${jobId}] Routing to Service 1: POS weighted average`);
+            processResult = await processPosWeightedAverage(content as string);
+            
+        } else if (handlerTypeFromUrl && content && typeof content === 'string') {
+            // 服務 2: 標準處理流程 - 支援單一或鏈式處理器（檔案上傳）
+            const handlerTypes = handlerTypeFromUrl.split(',').map(h => h.trim()).filter(h => h);
+            console.log(`🎯 [Job ${jobId}] Routing to Service 2: Handler chain [${handlerTypes.join(', ')}]`);
+            processResult = await processHandlerChain(content, handlerTypes, options);
+            
+        } else if (!handlerTypeFromUrl && body) {
+            // 服務 3: JSON API - 單一處理器（JSON 請求/響應）
+            console.log(`🎯 [Job ${jobId}] Routing to Service 3: JSON API`);
+            let requestData;
+            if (typeof body === 'string') {
+                try {
+                    requestData = JSON.parse(body);
+                } catch {
+                    throw new Error('Invalid JSON in request body');
+                }
+            } else {
+                requestData = JSON.parse(new TextDecoder().decode(body as ArrayBuffer));
+            }
+            processResult = await processJsonRequest(requestData);
+            
         } else {
-            // 使用標準的 handlerTypes 處理流程
-            result = await processGnssData(posContent, handlerTypes, options);
-            // 標準處理返回 CSV 格式
-            await submitResult(jobId, result, null, 'text/csv; charset=utf-8');
+            throw new Error(`Unknown job type - handlerType: ${handlerTypeFromUrl}, hasBody: ${!!body}, bodyType: ${typeof body}`);
         }
+        
+        // Submit result with proper content type
+        await submitResult(jobId, processResult.result, null, processResult.contentType);
         
     } catch (error: any) {
         console.error(`❌ Job ${jobId} failed:`, error.message);
@@ -239,11 +299,15 @@ async function processJob(job: JobData): Promise<void> {
  * Main polling loop
  */
 async function mainLoop(): Promise<void> {
-    console.log(`🚀 GNSS Compute Server started (TypeScript)`);
+    console.log(`🚀 GNSS Compute Server started (TypeScript - Service Separated)`);
     console.log(`   Worker ID: ${CONFIG.WORKER_ID}`);
     console.log(`   Polling interval: ${CONFIG.POLL_INTERVAL}ms`);
     console.log(`   Max concurrent jobs: ${CONFIG.MAX_CONCURRENT_JOBS}`);
     console.log(`   Cloudflare Worker URL: ${CONFIG.CLOUDFLARE_WORKER_URL}`);
+    console.log(`   📋 Services available:`);
+    console.log(`      1. POS weighted average (posWeightedAverage)`);
+    console.log(`      2. Handler chain (file upload + handlerType)`);
+    console.log(`      3. JSON API (single processor)`);
     
     while (isRunning) {
         try {
@@ -286,7 +350,12 @@ app.get('/health', (req, res) => {
         maxConcurrentJobs: CONFIG.MAX_CONCURRENT_JOBS,
         uptime: process.uptime(),
         memoryUsage: process.memoryUsage(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        services: [
+            'POS weighted average (posWeightedAverage)',
+            'Handler chain (file upload + handlerType)',
+            'JSON API (single processor)'
+        ]
     });
 });
 
