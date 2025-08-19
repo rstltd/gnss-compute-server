@@ -246,7 +246,20 @@ WORKER_ID=server-003 docker compose up -d
 
 ### 常見問題:
 
-1. **連線失敗到 Cloudflare Worker**
+1. **Docker 建置失敗 (npm ci 錯誤)**
+   ```bash
+   # 確保有 package-lock.json 檔案
+   ls -la package-lock.json
+   
+   # 如果缺失，重新生成
+   npm install
+   
+   # 清理 Docker 快取重新建置
+   docker system prune -f
+   docker compose build --no-cache
+   ```
+
+2. **連線失敗到 Cloudflare Worker**
    ```bash
    # 檢查網路連線
    curl -I https://您的worker.workers.dev
@@ -255,7 +268,7 @@ WORKER_ID=server-003 docker compose up -d
    nslookup 您的worker.workers.dev
    ```
 
-2. **記憶體不足**
+3. **記憶體不足**
    ```bash
    # 檢查系統記憶體
    free -h
@@ -264,7 +277,7 @@ WORKER_ID=server-003 docker compose up -d
    # 編輯 docker compose.yml 中的 memory 設定
    ```
 
-3. **Port 被占用**
+4. **Port 被占用**
    ```bash
    # 檢查 port 使用狀況
    sudo netstat -tulpn | grep 3001
