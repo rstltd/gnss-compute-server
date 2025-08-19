@@ -27,10 +27,16 @@ npm install
 
 ### 2. Configure Environment
 ```bash
-export CLOUDFLARE_WORKER_URL="https://gnss-edge-function.rstltd.org"
-export EXTERNAL_WORKER_API_KEY="e4795655e62c47a699abebe347fc330b4b2f5a0b4eeef0a0955d95e4ae7c6e2a"
+# Copy example environment file
+cp .env.example .env
+
+# Edit .env with your actual values (DO NOT commit .env to Git!)
+export CLOUDFLARE_WORKER_URL="https://your-worker.your-subdomain.workers.dev"
+export EXTERNAL_WORKER_API_KEY="your-super-secure-api-key"
 export WORKER_ID="compute-server-01"
 ```
+
+**⚠️ Security Warning**: Never commit real API keys or URLs to version control!
 
 ### 3. Start the Server
 ```bash

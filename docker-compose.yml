@@ -28,8 +28,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
-          cpus: '1.0'
+          memory: 8G
+          cpus: '10.0'
     
     # Health check
     healthcheck:
