@@ -5,11 +5,14 @@
   "main": "dist/external-worker.js",
   "type": "module",
   "scripts": {
-    "start": "npm run build && node dist/external-worker.js",
+    "start": "node dist/external-worker.js",
+    "start:build": "npm run build && node dist/external-worker.js",
     "dev": "npm run build && node --watch dist/external-worker.js",
     "dev:ts": "tsx watch external-worker.ts",
-    "build": "tsc",
-    "build:watch": "tsc --watch"
+    "build": "tsc && node fix-imports.js",
+    "build:watch": "tsc --watch",
+    "docker:build": "npm run build",
+    "fix-imports": "node fix-imports.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
