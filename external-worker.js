@@ -218,6 +218,8 @@ async function mainLoop() {
                 processJob(job).catch(error => {
                     console.error('❌ Job processing error:', error);
                 });
+                // Continue immediately to check for more tasks
+                continue;
             } else {
                 // No tasks available, wait before next poll
                 await new Promise(resolve => setTimeout(resolve, CONFIG.POLL_INTERVAL));
