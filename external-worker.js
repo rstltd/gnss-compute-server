@@ -60,8 +60,22 @@ async function processGnssData(posContent, handlerTypes, options) {
         // Generate realistic CSV output
         const result = generateSampleGnssResult(handlerTypes, processingTime);
         
+        // 數據完整性檢查
+        const resultSize = new Blob([result]).size;
+        const lineCount = result.split('\n').length;
+        
         const processingDuration = Date.now() - startTime;
         console.log(`✅ GNSS processing completed in ${processingDuration}ms`);
+        console.log(`📊 Result size: ${resultSize} bytes, Lines: ${lineCount}`);
+        
+        // 驗證結果不為空且包含標頭
+        if (!result || result.length === 0) {
+            throw new Error('Generated result is empty');
+        }
+        
+        if (!result.includes('date_time,E,N,H')) {
+            throw new Error('Generated result missing expected CSV header');
+        }
         
         return result;
         
@@ -102,7 +116,7 @@ function generateSampleGnssResult(handlerTypes, processingTime) {
         rows.push(row);
     }
     
-    return [header, ...rows].join('\\n');
+    return [header, ...rows].join('\n');
 }
 
 /**
@@ -129,14 +143,23 @@ async function pullTask() {
  */
 async function submitResult(jobId, result, error = null) {
     try {
-        await httpClient.post(`${CONFIG.CLOUDFLARE_WORKER_URL}/api/external/submit-result`, {
+        const payload = {
             jobId,
             result,
             error,
             contentType: 'text/csv; charset=utf-8',
             workerId: CONFIG.WORKER_ID,
             timestamp: Date.now()
-        });
+        };
+        
+        // 記錄提交的數據大小
+        if (result) {
+            const resultSize = new Blob([result]).size;
+            console.log(`📤 Submitting result for job ${jobId}: ${resultSize} bytes`);
+            payload.resultSize = resultSize;
+        }
+        
+        await httpClient.post(`${CONFIG.CLOUDFLARE_WORKER_URL}/api/external/submit-result`, payload);
         console.log(`✅ Result submitted for job ${jobId}`);
     } catch (error) {
         console.error(`❌ Failed to submit result for job ${jobId}:`, error.message);
