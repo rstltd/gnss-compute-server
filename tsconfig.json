@@ -11,12 +11,12 @@
     "forceConsistentCasingInFileNames": true,
     "declaration": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "resolveJsonModule": true
   },
   "include": [
     "src/**/*",
-    "external-worker.js"
+    "external-worker.ts"
   ],
   "exclude": [
     "node_modules",

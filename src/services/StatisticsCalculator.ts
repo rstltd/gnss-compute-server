@@ -1,4 +1,4 @@
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 
 /**
  * 數據統計介面

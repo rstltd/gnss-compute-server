@@ -1,4 +1,4 @@
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 
 /**
  * TimestampManager - 負責時間戳管理

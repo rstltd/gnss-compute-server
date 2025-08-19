@@ -1,4 +1,4 @@
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 import { RandomNumberGenerator } from './RandomNumberGenerator';
 import { StatisticsCalculator, DataStats, ConservativeStats } from './StatisticsCalculator';
 import { 

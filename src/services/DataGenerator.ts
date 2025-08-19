@@ -1,14 +1,14 @@
-import { GnssModel } from './GnssModel.ts';
-import { RandomNumberGenerator } from './RandomNumberGenerator.ts';
-import { StatisticsCalculator, DataStats, ConservativeStats } from './StatisticsCalculator.ts';
+import { GnssModel } from '../models/GnssModel';
+import { RandomNumberGenerator } from './RandomNumberGenerator';
+import { StatisticsCalculator, DataStats, ConservativeStats } from './StatisticsCalculator';
 import { 
     EnvironmentalFactorCalculator, 
     StationCharacteristics, 
     WeatherConditions 
-} from './EnvironmentalFactorCalculator.ts';
-import { StationCharacteristicsInferrer } from './StationCharacteristicsInferrer.ts';
-import { TimestampManager } from './TimestampManager.ts';
-import { DataCompatibilityAnalyzer, CompatibilityAnalysis } from './DataCompatibilityAnalyzer.ts';
+} from './EnvironmentalFactorCalculator';
+import { StationCharacteristicsInferrer } from './StationCharacteristicsInferrer';
+import { TimestampManager } from './TimestampManager';
+import { DataCompatibilityAnalyzer, CompatibilityAnalysis } from './DataCompatibilityAnalyzer';
 
 /**
  * DataGeneratorFixed - 修正趨勢性問題的數據生成器

@@ -1,4 +1,4 @@
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 import { StationCharacteristics } from './EnvironmentalFactorCalculator';
 import { DataStats } from './StatisticsCalculator';
 

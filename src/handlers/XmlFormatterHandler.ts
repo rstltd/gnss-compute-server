@@ -1,4 +1,4 @@
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 
 function formatDateTime(dateTimeString: string): string {
     const date = new Date(dateTimeString);

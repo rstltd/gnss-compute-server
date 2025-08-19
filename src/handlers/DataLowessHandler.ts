@@ -1,5 +1,5 @@
 
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 
 export class DataLowessHandler {
     private static readonly BANDWIDTH = 1.0;

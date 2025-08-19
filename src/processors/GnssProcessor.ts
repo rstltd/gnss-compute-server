@@ -1,13 +1,13 @@
-import { CoordinateConvertHandler } from '../CoordinateConvertHandler';
-import { DataOutliersHandler } from '../DataOutliersHandler';
-import { DataMedianHandler } from '../DataMedianHandler';
-import { DataLowessHandler } from '../DataLowessHandler';
-import { DataInterpolationHandler } from '../DataInterpolationHandler';
-import { SwcaCalculateHandler } from '../SwcaCalculateHandler';
-import { XmlFormatterHandler } from '../XmlFormatterHandler';
-import { DataAverageHandler } from '../DataAverageHandler';
-import { PosDataProcessor } from '../PosDataProcessor';
-import { GnssModel } from '../GnssModel';
+import { CoordinateConvertHandler } from '../handlers/CoordinateConvertHandler';
+import { DataOutliersHandler } from '../handlers/DataOutliersHandler';
+import { DataMedianHandler } from '../handlers/DataMedianHandler';
+import { DataLowessHandler } from '../handlers/DataLowessHandler';
+import { DataInterpolationHandler } from '../handlers/DataInterpolationHandler';
+import { SwcaCalculateHandler } from '../handlers/SwcaCalculateHandler';
+import { XmlFormatterHandler } from '../handlers/XmlFormatterHandler';
+import { DataAverageHandler } from '../handlers/DataAverageHandler';
+import { PosDataProcessor } from '../processors/PosDataProcessor';
+import { GnssModel } from '../models/GnssModel';
 import { ProcessingOptions, FieldPrecision, Env } from '../types/index';
 
 function formatDateTime(dateTimeString: string): string {
@@ -100,11 +100,74 @@ export class GnssProcessor {
     /**
      * 解析 GNSS 內容的輔助方法
      */
-    static async parseGnssContent(posContent: string): Promise<GnssModel[]> {
-        const { FileManager } = await import('./FileManager');
-        return FileManager.parsePosContent(posContent);
+    static parseGnssContent(posContent: string): GnssModel[] {
+        const lines = posContent.split('\n');
+        const data: GnssModel[] = [];
+        
+        for (const line of lines) {
+            if (line.trim() === '' || line.startsWith('%') || line.startsWith('#')) {
+                continue; // 跳過空行和註解行
+            }
+            
+            // 解析 .pos 檔案格式: YYYY/MM/DD HH:MM:SS.SSS   X(m)      Y(m)      Z(m)   Q  ns   sdn(m)   sde(m)   sdu(m)
+            const parts = line.trim().split(/\s+/);
+            
+            if (parts.length >= 4) {
+                try {
+                    const dateTime = parts[0] + ' ' + parts[1];
+                    const x = parseFloat(parts[2]);
+                    const y = parseFloat(parts[3]);  
+                    const z = parseFloat(parts[4]);
+                    
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                        data.push({
+                            dateTime: dateTime,
+                            E: x, // 東向座標
+                            N: y, // 北向座標  
+                            H: z, // 高程
+                            latitude: 0, // 將通過座標轉換計算
+                            longitude: 0, // 將通過座標轉換計算
+                            height: z,
+                            angle: 0,
+                            axis: 0,
+                            plate: 0,
+                            moveE: 0,
+                            moveN: 0,
+                            moveH: 0,
+                            moveTotal: 0,
+                            dayE: x,
+                            dayN: y,
+                            dayH: z
+                        });
+                    }
+                } catch (error) {
+                    console.warn('解析行時出錯:', line);
+                }
+            }
+        }
+        
+        console.log(`📊 解析 .pos 檔案: ${data.length} 個有效數據點`);
+        return data;
     }
     
+    /**
+     * 從 .pos 內容開始的完整處理流程
+     */
+    static async processFromPosContent(
+        posContent: string,
+        options: ProcessingOptions
+    ): Promise<{ result: string; contentType: string }> {
+        // 1. 解析 .pos 檔案內容
+        const parsedData = this.parseGnssContent(posContent);
+        
+        if (parsedData.length === 0) {
+            throw new Error('無法從 .pos 檔案中解析到有效數據');
+        }
+        
+        // 2. 執行標準處理流程
+        return this.processGnssData(parsedData, options);
+    }
+
     /**
      * 處理標準的GNSS數據處理流程 (本地運算)
      */

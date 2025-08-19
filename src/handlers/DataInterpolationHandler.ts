@@ -1,6 +1,6 @@
 
-import { GnssModel } from './GnssModel';
-import { DataGenerator } from './DataGenerator';
+import { GnssModel } from '../models/GnssModel';
+import { DataGenerator } from '../services/DataGenerator';
 
 export class DataInterpolationHandler {
     

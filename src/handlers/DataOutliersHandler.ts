@@ -1,5 +1,5 @@
 
-import { GnssModel } from './GnssModel';
+import { GnssModel } from '../models/GnssModel';
 
 export class DataOutliersHandler {
     private static readonly K = 1.5;
