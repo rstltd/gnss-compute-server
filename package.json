@@ -1,0 +1,28 @@
+{
+  "name": "gnss-compute-server",
+  "version": "1.0.0",
+  "description": "High-performance GNSS computation server with Pull Consumer architecture",
+  "main": "external-worker.js",
+  "type": "module",
+  "scripts": {
+    "start": "node external-worker.js",
+    "dev": "node --watch external-worker.js",
+    "build": "tsc",
+    "build:watch": "tsc --watch"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/express": "^4.17.17",
+    "@types/cors": "^2.8.14",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["gnss", "computation", "pull-consumer", "typescript", "cloudflare-workers"]
+}

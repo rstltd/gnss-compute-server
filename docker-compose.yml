@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  gnss-compute-server:
+    build: .
+    image: gnss-compute-server:latest
+    container_name: gnss-compute-server
+    restart: unless-stopped
+    
+    ports:
+      - "3001:3001"
+    
+    environment:
+      # Required - Set these in .env file or override here
+      - CLOUDFLARE_WORKER_URL=${CLOUDFLARE_WORKER_URL}
+      - EXTERNAL_WORKER_API_KEY=${EXTERNAL_WORKER_API_KEY}
+      
+      # Optional configuration
+      - WORKER_ID=docker-server-001
+      - POLL_INTERVAL=5000
+      - MAX_CONCURRENT_JOBS=3
+      - PORT=3001
+    
+    env_file:
+      - .env
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Scale with multiple workers
+  gnss-compute-server-2:
+    build: .
+    image: gnss-compute-server:latest
+    container_name: gnss-compute-server-2
+    restart: unless-stopped
+    profiles: ["scale"]
+    
+    ports:
+      - "3002:3001"
+    
+    environment:
+      - CLOUDFLARE_WORKER_URL=${CLOUDFLARE_WORKER_URL}
+      - EXTERNAL_WORKER_API_KEY=${EXTERNAL_WORKER_API_KEY}
+      - WORKER_ID=docker-server-002
+      - PORT=3001
+    
+    env_file:
+      - .env
