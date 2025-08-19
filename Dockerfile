@@ -13,9 +13,10 @@ COPY tsconfig.json ./
 # Install all dependencies (including devDependencies for building)
 RUN npm ci
 
-# Copy source code
+# Copy source code and build scripts
 COPY src/ ./src/
 COPY external-worker.ts ./
+COPY fix-imports.js ./
 
 # Build TypeScript
 RUN npm run build
