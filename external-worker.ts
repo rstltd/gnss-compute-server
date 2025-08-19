@@ -62,7 +62,35 @@ interface JobData {
 }
 
 /**
- * High-performance GNSS data processing using real TypeScript processors
+ * POS檔案加權平均計算 (專用處理流程)
+ */
+async function processPosWeightedAverage(posContent: string): Promise<string> {
+    console.log(`🔄 Processing POS weighted average - Size: ${posContent.length} bytes`);
+    const startTime = Date.now();
+
+    try {
+        const result = GnssProcessor.processPosWeightedAverage(posContent);
+        const processingDuration = Date.now() - startTime;
+
+        if (result.success) {
+            console.log(`✅ POS weighted average completed in ${processingDuration}ms`);
+            console.log(`📊 Stats:`, result.stats);
+            return JSON.stringify({
+                success: true,
+                result: result.result,
+                stats: result.stats
+            });
+        } else {
+            throw new Error(result.error || 'POS processing failed');
+        }
+    } catch (error: any) {
+        console.error(`❌ POS weighted average failed:`, error.message);
+        throw error;
+    }
+}
+
+/**
+ * 標準 GNSS 數據處理 (handlerTypes 處理流程)
  */
 async function processGnssData(posContent: string, handlerTypes: string[], options: any): Promise<string> {
     console.log(`🔄 Processing GNSS data - Size: ${posContent.length} bytes, Handlers: [${handlerTypes.join(', ')}]`);
@@ -70,7 +98,6 @@ async function processGnssData(posContent: string, handlerTypes: string[], optio
     const startTime = Date.now();
     
     try {
-        // 使用真實的 TypeScript GNSS 處理器
         const processingOptions: ProcessingOptions = {
             handlerTypes,
             ...options
@@ -78,10 +105,9 @@ async function processGnssData(posContent: string, handlerTypes: string[], optio
         
         const result = await GnssProcessor.processFromPosContent(posContent, processingOptions);
         
-        // 數據完整性檢查
+        // 數據完整性檢查 - 修正換行符檢查
         const resultSize = Buffer.byteLength(result.result, 'utf8');
-        const lineCount = result.result.split('\\n').length;
-        
+        const lineCount = result.result.split('\n').length; // 修正: 使用單個 \n
         const processingDuration = Date.now() - startTime;
         console.log(`✅ GNSS processing completed in ${processingDuration}ms`);
         console.log(`📊 Result size: ${resultSize} bytes, Lines: ${lineCount}, Content-Type: ${result.contentType}`);
@@ -126,13 +152,13 @@ async function pullTask(): Promise<JobData | null> {
 /**
  * Submit computation result back to Cloudflare Worker
  */
-async function submitResult(jobId: string, result: string | null, error: string | null = null): Promise<void> {
+async function submitResult(jobId: string, result: string | null, error: string | null = null, contentType: string = 'text/csv; charset=utf-8'): Promise<void> {
     try {
         const payload = {
             jobId,
             result,
             error,
-            contentType: 'text/csv; charset=utf-8',
+            contentType,
             workerId: CONFIG.WORKER_ID,
             timestamp: Date.now()
         };
@@ -185,11 +211,20 @@ async function processJob(job: JobData): Promise<void> {
             throw new Error('No file content found in job data');
         }
         
-        // Process GNSS data with real TypeScript processors
-        const result = await processGnssData(posContent, handlerTypes, options);
+        let result: string;
         
-        // Submit successful result
-        await submitResult(jobId, result);
+        // 檢查是否為 POS 加權平均計算
+        if (handlerTypes.length === 1 && handlerTypes[0] === 'posWeightedAverage') {
+            // 使用專用的 POS 加權平均處理流程
+            result = await processPosWeightedAverage(posContent);
+            // POS 加權平均返回 JSON 格式
+            await submitResult(jobId, result, null, 'application/json');
+        } else {
+            // 使用標準的 handlerTypes 處理流程
+            result = await processGnssData(posContent, handlerTypes, options);
+            // 標準處理返回 CSV 格式
+            await submitResult(jobId, result, null, 'text/csv; charset=utf-8');
+        }
         
     } catch (error: any) {
         console.error(`❌ Job ${jobId} failed:`, error.message);
