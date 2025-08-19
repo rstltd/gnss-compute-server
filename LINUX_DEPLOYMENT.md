@@ -259,7 +259,18 @@ WORKER_ID=server-003 docker compose up -d
    docker compose build --no-cache
    ```
 
-2. **連線失敗到 Cloudflare Worker**
+2. **ES Module 錯誤 (require is not defined)**
+   ```bash
+   # 如果看到 "require is not defined in ES module scope" 錯誤
+   # 確保使用最新版本的程式碼
+   git pull origin master
+   
+   # 重新建置容器
+   docker compose build --no-cache
+   docker compose up -d
+   ```
+
+3. **連線失敗到 Cloudflare Worker**
    ```bash
    # 檢查網路連線
    curl -I https://您的worker.workers.dev
@@ -268,7 +279,7 @@ WORKER_ID=server-003 docker compose up -d
    nslookup 您的worker.workers.dev
    ```
 
-3. **記憶體不足**
+4. **記憶體不足**
    ```bash
    # 檢查系統記憶體
    free -h
@@ -277,7 +288,7 @@ WORKER_ID=server-003 docker compose up -d
    # 編輯 docker compose.yml 中的 memory 設定
    ```
 
-4. **Port 被占用**
+5. **Port 被占用**
    ```bash
    # 檢查 port 使用狀況
    sudo netstat -tulpn | grep 3001
